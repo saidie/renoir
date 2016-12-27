@@ -56,6 +56,12 @@ module Renoir
       call_with_redirection(slot, command, &block)
     end
 
+    def close
+      while entry = @connections.shift
+        entry[1].close
+      end
+    end
+
     def each_node
       return enum_for(:each_node) unless block_given?
 
