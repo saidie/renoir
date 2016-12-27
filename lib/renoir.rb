@@ -1,5 +1,9 @@
 require "renoir/version"
 
 module Renoir
-  # Your code goes here...
+  class BaseError < RuntimeError
+  end
+
+  class RedirectionError < BaseError
+  end
 end
