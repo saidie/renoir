@@ -1,4 +1,5 @@
 require "renoir/version"
+require "renoir/client"
 
 module Renoir
   class BaseError < RuntimeError
