@@ -22,6 +22,7 @@ module Renoir
       @cluster_info = ClusterInfo.new
       @refresh_slots = true
 
+      options = options.map { |k, v| [k.to_sym, v] }.to_h
       @options = DEFAULT_OPTIONS.merge(options)
       @logger = @options[:logger]
       @adapter_class = ConnectionAdapters.const_get(@options[:connection_adapter].to_s.capitalize)
