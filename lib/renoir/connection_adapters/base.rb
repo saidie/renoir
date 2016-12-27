@@ -11,6 +11,10 @@ module Renoir
         fail "a connection adapter must override #call"
       end
 
+      def close
+        fail "a connection adapter must override #close"
+      end
+
       def with_raw_connection
         fail "a connection adapter must override #with_raw_connection"
       end
