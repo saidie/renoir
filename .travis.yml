@@ -2,4 +2,10 @@ sudo: false
 language: ruby
 rvm:
   - 2.3.0
-before_install: gem install bundler -v 1.13.6
+before_install:
+  - gem install bundler -v 1.13.6
+  - git clone https://github.com/antirez/redis && cd redis && make
+before_script:
+  - cd redis/utils/create-cluster && ./create-cluster start && ./create-cluster create
+after_script:
+  - cd redis/utils/create-cluster && ./create-cluster stop && ./create-cluster clean
