@@ -50,7 +50,7 @@ module Renoir
           when :zinterstore, :zunionstore
             [command[1]] + command[2]
           else
-            [command[1]]
+            []
           end
         end
       end
