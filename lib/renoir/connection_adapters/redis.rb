@@ -36,7 +36,7 @@ module Renoir
             (command[2].is_a?(Hash) ? command[2][:keys] : command[2]) || []
           when :georadius, :georadiusbymember
             store_index = command.index { |arg| [:store, :storedist].include?(arg.to_s.downcase.to_sym) }
-            [command[1]] + (store_index ? command[store_index+1] : [])
+            [command[1]] + (store_index ? [command[store_index+1]] : [])
           when :migrate
             if command[1].empty?
               # TODO: support multiple keys when the redis-rb gem supports that
@@ -46,7 +46,7 @@ module Renoir
           when :mset, :msetnx
             ((command.size - 1) / 2).times.map { |count| command[1 + count*2] }
           when :sort
-            [command[1]] + (command[2].is_a?(Hash) ? command[2][:store] : [])
+            [command[1]] + (command[2].is_a?(Hash) ? [command[2][:store]] : [])
           when :zinterstore, :zunionstore
             [command[1]] + command[2]
           else
