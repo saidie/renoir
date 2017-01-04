@@ -6,6 +6,6 @@ before_install:
   - gem install bundler -v 1.13.6
   - git clone https://github.com/antirez/redis /tmp/redis && cd /tmp/redis && make
 before_script:
-  - cd /tmp/redis/utils/create-cluster && ./create-cluster start && ./create-cluster create
+  - cd /tmp/redis/utils/create-cluster && ./create-cluster start && yes yes | ./create-cluster create
 after_script:
   - cd /tmp/redis/utils/create-cluster && ./create-cluster stop && ./create-cluster clean
