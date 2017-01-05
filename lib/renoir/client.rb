@@ -1,3 +1,4 @@
+require 'thread'
 require "renoir/cluster_info"
 require "renoir/connection_adapters"
 require "renoir/crc16"
@@ -43,6 +44,8 @@ module Renoir
         port ||= 6379
         @cluster_info.add_node(host, port.to_i)
       end
+
+      @connections_mutex = Mutex.new
     end
 
     def call(*command, &block)
@@ -151,13 +154,20 @@ module Renoir
       end
 
       (@connections.keys - @cluster_info.node_names).each do |key|
-        @connections.delete(key)
+        conn = @connections.delete(key)
+        conn.close if conn
       end
     end
 
     def fetch_connection(node)
       name = node[:name]
-      @connections[name] ||= @adapter_class.new(node[:host], node[:port], @options)
+      if conn = @connections[name]
+        conn
+      else
+        @connections_mutex.synchronize do
+          @connections[name] ||= @adapter_class.new(node[:host], node[:port], @options)
+        end
+      end
     end
 
     def sleep_interval(retry_count)
