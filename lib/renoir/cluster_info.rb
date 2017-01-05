@@ -22,15 +22,15 @@ module Renoir
     end
 
     def slot_node(slot)
-      @slots[slot]
+      @nodes[@slots[slot]]
     end
 
     def node_names
       @nodes.keys
     end
 
-    def node_info(name)
-      @nodes[name]
+    def nodes
+      @nodes.values
     end
 
     def add_node(host, port)
@@ -40,7 +40,6 @@ module Renoir
         port: port,
         name: name,
       }
-      name
     end
   end
 end

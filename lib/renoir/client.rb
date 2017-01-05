@@ -65,8 +65,8 @@ module Renoir
     def each_node
       return enum_for(:each_node) unless block_given?
 
-      @cluster_info.node_names.each do |name|
-        fetch_connection(name).with_raw_connection do |conn|
+      @cluster_info.nodes.each do |node|
+        fetch_connection(node).with_raw_connection do |conn|
           yield conn
         end
       end
@@ -90,22 +90,22 @@ module Renoir
     end
 
     def call_with_redirection(slot, command, &block)
-      names = @cluster_info.node_names.dup
-      name = @cluster_info.slot_node(slot) || names.sample
+      nodes = @cluster_info.nodes.dup
+      node = @cluster_info.slot_node(slot) || nodes.sample
 
       redirect_count = 0
       connect_error_count = 0
       connect_retry_count = 0
       asking = false
       loop do
-        names.delete(name)
+        nodes.delete(node)
 
-        conn = fetch_connection(name)
+        conn = fetch_connection(node)
         reply = conn.call(command, asking, &block)
         case reply
         when ConnectionAdapters::Reply::RedirectionError
           asking = reply.ask
-          name = @cluster_info.add_node(reply.ip, reply.port)
+          node = @cluster_info.add_node(reply.ip, reply.port)
           @refresh_slots ||= !asking
 
           redirect_count += 1
@@ -113,12 +113,12 @@ module Renoir
         when ConnectionAdapters::Reply::ConnectionError
           connect_error_count += 1
           raise reply.cause if @options[:max_connection_error] < connect_error_count
-          if names.empty?
+          if nodes.empty?
             connect_retry_count += 1
             sleep(sleep_interval(connect_retry_count))
           else
             asking = false
-            name = names.sample
+            node = nodes.sample
           end
         else
           return reply
@@ -128,15 +128,15 @@ module Renoir
 
     def refresh_slots
       slots = nil
-      @cluster_info.node_names.each do |name|
-        conn = fetch_connection(name)
+      @cluster_info.nodes.each do |node|
+        conn = fetch_connection(node)
         reply = conn.call(["cluster", "slots"])
         case reply
         when ConnectionAdapters::Reply::RedirectionError
           fail "never reach here"
         when ConnectionAdapters::Reply::ConnectionError
           if @logger
-            @logger.warn("CLUSTER SLOTS command failed: node_name=#{name}, message=#{reply.cause}")
+            @logger.warn("CLUSTER SLOTS command failed: node_name=#{node[:name]}, message=#{reply.cause}")
           end
         else
           slots = reply
@@ -155,12 +155,9 @@ module Renoir
       end
     end
 
-    def fetch_connection(name)
-      @connections[name] ||=
-        begin
-          node = @cluster_info.node_info(name)
-          @adapter_class.new(node[:host], node[:port], @options)
-        end
+    def fetch_connection(node)
+      name = node[:name]
+      @connections[name] ||= @adapter_class.new(node[:host], node[:port], @options)
     end
 
     def sleep_interval(retry_count)
