@@ -69,7 +69,7 @@ class RenoirClientRedisTest < Minitest::Test
     end
 
     Thread.current[:error_count] = 0
-    Thread.current[:limit] = Renoir::Client::DEFAULT_OPTIONS[:max_redirection]
+    Thread.current[:limit] = Renoir::Client::DEFAULT_OPTIONS[:max_redirection] - 1
     assert @client.set('hoge', 123) == 'OK'
   end
 
