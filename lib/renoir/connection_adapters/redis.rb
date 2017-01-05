@@ -82,7 +82,9 @@ module Renoir
 
       def close
         # Redis#disconnect! is deprecated since redis-rb 3.3.0
-        @conn.respond_to?(:close) ? @conn.close : @conn.disconnect!
+        @conn.mon_synchronize do
+          @conn.respond_to?(:close) ? @conn.close : @conn.disconnect!
+        end
       end
 
       def with_raw_connection
