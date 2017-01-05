@@ -46,6 +46,7 @@ module Renoir
       end
 
       @connections_mutex = Mutex.new
+      @refresh_slots_mutex = Mutex.new
     end
 
     def call(*command, &block)
@@ -54,7 +55,12 @@ module Renoir
       fail "No way to dispatch this command to Redis Cluster." if slots.size != 1
       slot = slots.first
 
-      refresh_slots if @refresh_slots
+      refresh = @refresh_slots_mutex.synchronize do
+        refresh = @refresh_slots
+        @refresh_slots = false
+        refresh
+      end
+      refresh_slots if refresh
 
       call_with_redirection(slot, command, &block)
     end
@@ -148,7 +154,6 @@ module Renoir
       end
       return unless slots
 
-      @refresh_slots = false
       @cluster_info = ClusterInfo.new.tap do |cluster_info|
         cluster_info.load_slots(slots)
       end
