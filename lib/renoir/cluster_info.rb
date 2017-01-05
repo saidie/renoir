@@ -16,17 +16,13 @@ module Renoir
         ip, port, = master
         name = add_node(ip, port)
         (s..e).each do |slot|
-          set_slot(slot, name)
+          @slots[slot] = name
         end
       end
     end
 
     def slot_node(slot)
       @slots[slot]
-    end
-
-    def set_slot(slot, name)
-      @slots[slot] = name
     end
 
     def node_names
