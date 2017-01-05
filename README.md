@@ -1,5 +1,6 @@
 # Renoir
 
+[![Gem Version](https://badge.fury.io/rb/renoir.svg)](https://badge.fury.io/rb/renoir)
 [![Build Status](https://travis-ci.org/saidie/renoir.svg?branch=master)](https://travis-ci.org/saidie/renoir)
 
 A production ready Redis cluster client for Ruby.
