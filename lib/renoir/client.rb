@@ -49,6 +49,10 @@ module Renoir
       @refresh_slots_mutex = Mutex.new
     end
 
+    def eval(*args, &block)
+      call(eval, *args, &block)
+    end
+
     def call(*command, &block)
       keys = @adapter_class.get_keys_from_command(command)
       slots = keys.map { |key| key_slot(key) }.uniq
