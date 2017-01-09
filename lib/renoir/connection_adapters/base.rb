@@ -7,7 +7,7 @@ module Renoir
         end
       end
 
-      def call(command, asking=false, &block)
+      def call(commands, asking=false, &block)
         fail "a connection adapter must override #call"
       end
 

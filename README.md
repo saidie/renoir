@@ -46,8 +46,35 @@ rc = Renoir::Client.new(
 
   # redis-rb options
   timeout: 100,
-  password: 'password'
+  password: 'password',
+  driver: :hiredis
 )
+```
+
+### Pipelining
+
+Command pipelining is supported although "future" variable is not available at this point.
+
+```ruby
+rc.pipeliend do |pipeline|
+  pipeline.set('hoge{1}', 123)
+  pipeline.get('hoge{1}')
+  pipeline.get('fuga{1}')
+end
+# => ["OK", "123", nil]
+```
+
+If pipelined commands use different slot of key, it fails without dispatching command.
+
+You can also execute commands atomically with `#multi`:
+
+```ruby
+rc.multi do |pipeline|
+  pipeline.set('hoge{1}', 123)
+  pipeline.get('hoge{1}')
+  pipeline.get('fuga{1}')
+end
+# => ["OK", "123", nil]
 ```
 
 ### Dispatch command to nodes directly

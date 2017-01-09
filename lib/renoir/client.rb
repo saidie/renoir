@@ -1,5 +1,6 @@
 require 'thread'
 require "renoir/cluster_info"
+require "renoir/pipeline"
 require "renoir/connection_adapters"
 require "renoir/crc16"
 
@@ -50,23 +51,30 @@ module Renoir
     end
 
     def eval(*args, &block)
-      call(eval, *args, &block)
+      call(:eval, *args, &block)
+    end
+
+    def multi(&block)
+      commands = pipeline_commands(&block)
+      slot = get_slot_from_commands(commands)
+
+      refresh_slots
+      call_with_redirection(slot, [[:multi]] + commands + [[:exec]])
+    end
+
+    def pipelined(&block)
+      commands = pipeline_commands(&block)
+      slot = get_slot_from_commands(commands)
+
+      refresh_slots
+      call_with_redirection(slot, commands)
     end
 
     def call(*command, &block)
-      keys = @adapter_class.get_keys_from_command(command)
-      slots = keys.map { |key| key_slot(key) }.uniq
-      fail "No way to dispatch this command to Redis Cluster." if slots.size != 1
-      slot = slots.first
+      slot = get_slot_from_commands([command])
 
-      refresh = @refresh_slots_mutex.synchronize do
-        refresh = @refresh_slots
-        @refresh_slots = false
-        refresh
-      end
-      refresh_slots if refresh
-
-      call_with_redirection(slot, command, &block)
+      refresh_slots
+      call_with_redirection(slot, [command], &block)[0]
     end
 
     def close
@@ -102,7 +110,22 @@ module Renoir
       CRC16.crc16(key) % REDIS_CLUSTER_HASH_SLOTS
     end
 
-    def call_with_redirection(slot, command, &block)
+    def get_slot_from_commands(commands)
+      keys = commands.flat_map { |command| @adapter_class.get_keys_from_command(command) }.uniq
+      slots = keys.map { |key| key_slot(key) }.uniq
+      fail "No way to dispatch this command to Redis Cluster." if slots.size != 1
+      slots.first
+    end
+
+    def pipeline_commands(&block)
+      pipeline = Pipeline.new(
+        connection_adapter: @options[:connection_adapter]
+      )
+      yield pipeline
+      pipeline.commands
+    end
+
+    def call_with_redirection(slot, commands, &block)
       nodes = @cluster_info.nodes.dup
       node = @cluster_info.slot_node(slot) || nodes.sample
 
@@ -114,7 +137,7 @@ module Renoir
         nodes.delete(node)
 
         conn = fetch_connection(node)
-        reply = conn.call(command, asking, &block)
+        reply = conn.call(commands, asking, &block)
         case reply
         when ConnectionAdapters::Reply::RedirectionError
           asking = reply.ask
@@ -140,10 +163,17 @@ module Renoir
     end
 
     def refresh_slots
+      refresh = @refresh_slots_mutex.synchronize do
+        refresh = @refresh_slots
+        @refresh_slots = false
+        refresh
+      end
+      return unless refresh
+
       slots = nil
       @cluster_info.nodes.each do |node|
         conn = fetch_connection(node)
-        reply = conn.call(["cluster", "slots"])
+        reply = conn.call([["cluster", "slots"]])
         case reply
         when ConnectionAdapters::Reply::RedirectionError
           fail "never reach here"
@@ -152,7 +182,7 @@ module Renoir
             @logger.warn("CLUSTER SLOTS command failed: node_name=#{node[:name]}, message=#{reply.cause}")
           end
         else
-          slots = reply
+          slots = reply[0]
           break
         end
       end

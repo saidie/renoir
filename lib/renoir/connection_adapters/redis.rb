@@ -59,15 +59,30 @@ module Renoir
         @conn = ::Redis.new(options.merge(host: host, port: port))
       end
 
-      def call(command, asking=false, &block)
-        command, *args = command
-        if asking
-          @conn.multi do |tx|
-            tx.asking
-            tx.send(command, *args, &block)
+      def call(commands, asking=false, &block)
+        if commands[0][0].to_sym == :multi
+          fail 'EXEC command is required for MULTI' if commands[-1][0].to_sym != :exec
+          commands = commands[1..-2]
+          multi = true
+        end
+
+        if multi || asking
+          replies = @conn.multi do |tx|
+            tx.asking if asking
+            commands.each do |command, *args|
+              tx.send(command, *args, &block)
+            end
+          end
+          asking ? replies.slice(1..-1) : replies
+        elsif commands.size > 1
+          @conn.pipelined do |pipeline|
+            commands.each do |command, *args|
+              pipeline.send(command, *args, &block)
+            end
           end
         else
-          @conn.send(command, *args, &block)
+          command, *args = commands[0]
+          [@conn.send(command, *args, &block)]
         end
       rescue ::Redis::CommandError => e
         errv = e.to_s.split
