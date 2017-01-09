@@ -66,7 +66,7 @@ module Renoir
       end
       refresh_slots if refresh
 
-      call_with_redirection(slot, command, &block)
+      call_with_redirection(slot, [command], &block)[0]
     end
 
     def close
@@ -102,7 +102,7 @@ module Renoir
       CRC16.crc16(key) % REDIS_CLUSTER_HASH_SLOTS
     end
 
-    def call_with_redirection(slot, command, &block)
+    def call_with_redirection(slot, commands, &block)
       nodes = @cluster_info.nodes.dup
       node = @cluster_info.slot_node(slot) || nodes.sample
 
@@ -114,7 +114,7 @@ module Renoir
         nodes.delete(node)
 
         conn = fetch_connection(node)
-        reply = conn.call(command, asking, &block)
+        reply = conn.call(commands, asking, &block)
         case reply
         when ConnectionAdapters::Reply::RedirectionError
           asking = reply.ask
@@ -143,7 +143,7 @@ module Renoir
       slots = nil
       @cluster_info.nodes.each do |node|
         conn = fetch_connection(node)
-        reply = conn.call(["cluster", "slots"])
+        reply = conn.call([["cluster", "slots"]])
         case reply
         when ConnectionAdapters::Reply::RedirectionError
           fail "never reach here"
@@ -152,7 +152,7 @@ module Renoir
             @logger.warn("CLUSTER SLOTS command failed: node_name=#{node[:name]}, message=#{reply.cause}")
           end
         else
-          slots = reply
+          slots = reply[0]
           break
         end
       end
