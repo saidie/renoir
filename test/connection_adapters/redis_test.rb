@@ -15,6 +15,7 @@ class RenoirConnectionAdaptersRedisTest < Minitest::Test
                  end
     @klass = Renoir::ConnectionAdapters::Redis
     @adapter = @klass.new(host, port)
+    @conn = @adapter.instance_variable_get(:@conn)
   end
 
   def test_get_keys_from_command
@@ -39,28 +40,20 @@ class RenoirConnectionAdaptersRedisTest < Minitest::Test
   end
 
   def test_call_without_asking
-    conn_mock = Minitest::Mock.new
-    conn_mock.expect(:info, true)
-    @adapter.instance_variable_set(:@conn, conn_mock)
-
-    @adapter.call([[:info]], false)
-
-    conn_mock.verify
+    def @conn.asking
+      call(:asking)
+      @asked = true
+    end
+    assert @adapter.call([[:info]], false).size == 1
+    refute @conn.instance_variable_get(:@asked)
   end
 
   def test_call_with_asking
-    tx_mock = Minitest::Mock.new
-    tx_mock.expect(:asking, true)
-    tx_mock.expect(:info, true)
-    conn_mock = Struct.new(:tx_mock) do
-      def multi
-        yield tx_mock
-      end
-    end.new(tx_mock)
-    @adapter.instance_variable_set(:@conn, conn_mock)
-
-    @adapter.call([[:info]], true)
-
-    tx_mock.verify
+    def @conn.asking
+      call(:asking)
+      @asked = true
+    end
+    assert @adapter.call([[:info]], true).size == 1
+    assert @conn.instance_variable_get(:@asked)
   end
 end
