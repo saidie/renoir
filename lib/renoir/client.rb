@@ -1,5 +1,6 @@
 require 'thread'
 require "renoir/cluster_info"
+require "renoir/pipeline"
 require "renoir/connection_adapters"
 require "renoir/crc16"
 
@@ -53,6 +54,14 @@ module Renoir
       call(:eval, *args, &block)
     end
 
+    def multi(&block)
+      commands = pipeline_commands(&block)
+      slot = get_slot_from_commands(commands)
+
+      refresh_slots
+      call_with_redirection(slot, [[:multi]] + commands + [[:exec]])
+    end
+
     def call(*command, &block)
       slot = get_slot_from_commands([command])
 
@@ -98,6 +107,14 @@ module Renoir
       slots = keys.map { |key| key_slot(key) }.uniq
       fail "No way to dispatch this command to Redis Cluster." if slots.size != 1
       slots.first
+    end
+
+    def pipeline_commands(&block)
+      pipeline = Pipeline.new(
+        connection_adapter: @options[:connection_adapter]
+      )
+      yield pipeline
+      pipeline.commands
     end
 
     def call_with_redirection(slot, commands, &block)
