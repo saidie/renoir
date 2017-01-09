@@ -59,15 +59,23 @@ module Renoir
         @conn = ::Redis.new(options.merge(host: host, port: port))
       end
 
-      def call(command, asking=false, &block)
-        command, *args = command
+      def call(commands, asking=false, &block)
         if asking
           @conn.multi do |tx|
             tx.asking
-            tx.send(command, *args, &block)
+            commands.each do |command, *args|
+              tx.send(command, *args, &block)
+            end
+          end
+        elsif commands.size > 1
+          @conn.pipelined do |pipeline|
+            commands.each do |command, *args|
+              pipeline.send(command, *args, &block)
+            end
           end
         else
-          @conn.send(command, *args, &block)
+          command, *args = commands[0]
+          [@conn.send(command, *args, &block)]
         end
       rescue ::Redis::CommandError => e
         errv = e.to_s.split
