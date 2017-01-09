@@ -66,7 +66,7 @@ module Renoir
             commands.each do |command, *args|
               tx.send(command, *args, &block)
             end
-          end
+          end.slice(1..-1)
         elsif commands.size > 1
           @conn.pipelined do |pipeline|
             commands.each do |command, *args|
