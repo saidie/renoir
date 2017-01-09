@@ -60,13 +60,20 @@ module Renoir
       end
 
       def call(commands, asking=false, &block)
-        if asking
-          @conn.multi do |tx|
-            tx.asking
+        if commands[0][0].to_sym == :multi
+          fail 'EXEC command is required for MULTI' if commands[-1][0].to_sym != :exec
+          commands = commands[1..-2]
+          multi = true
+        end
+
+        if multi || asking
+          replies = @conn.multi do |tx|
+            tx.asking if asking
             commands.each do |command, *args|
               tx.send(command, *args, &block)
             end
-          end.slice(1..-1)
+          end
+          asking ? replies.slice(1..-1) : replies
         elsif commands.size > 1
           @conn.pipelined do |pipeline|
             commands.each do |command, *args|
