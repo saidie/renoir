@@ -43,7 +43,7 @@ class RenoirConnectionAdaptersRedisTest < Minitest::Test
     conn_mock.expect(:info, true)
     @adapter.instance_variable_set(:@conn, conn_mock)
 
-    @adapter.call([:info], false)
+    @adapter.call([[:info]], false)
 
     conn_mock.verify
   end
@@ -59,7 +59,7 @@ class RenoirConnectionAdaptersRedisTest < Minitest::Test
     end.new(tx_mock)
     @adapter.instance_variable_set(:@conn, conn_mock)
 
-    @adapter.call([:info], true)
+    @adapter.call([[:info]], true)
 
     tx_mock.verify
   end
