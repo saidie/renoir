@@ -7,6 +7,14 @@ class RenoirClientRedisTest < Minitest::Test
     )
   end
 
+  def test_eval
+    assert_raises RuntimeError do
+      @client.eval('return {KEYS[1]}', keys: [])
+    end
+
+    assert @client.eval('return {KEYS[1]}', keys: ['hoge']) == ['hoge']
+  end
+
   def test_call_single_key_command
     assert @client.set('hoge', 123) == 'OK'
     assert @client.set('fuga', 'piyo') == 'OK'
