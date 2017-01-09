@@ -46,7 +46,8 @@ rc = Renoir::Client.new(
 
   # redis-rb options
   timeout: 100,
-  password: 'password'
+  password: 'password',
+  driver: :hiredis
 )
 ```
 
