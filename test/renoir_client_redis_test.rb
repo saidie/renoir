@@ -15,6 +15,23 @@ class RenoirClientRedisTest < Minitest::Test
     assert @client.eval('return {KEYS[1]}', keys: ['hoge']) == ['hoge']
   end
 
+  def test_multi
+    assert_raises RuntimeError do
+      @client.multi do |tx|
+        tx.get('hoge')
+        tx.info
+        tx.get('fuga')
+      end
+    end
+
+    res = @client.multi do |tx|
+      tx.get('hoge{1}')
+      tx.info
+      tx.get('fuga{1}')
+    end
+    assert res.size == 3
+  end
+
   def test_call_single_key_command
     assert @client.set('hoge', 123) == 'OK'
     assert @client.set('fuga', 'piyo') == 'OK'
