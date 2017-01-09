@@ -62,6 +62,14 @@ module Renoir
       call_with_redirection(slot, [[:multi]] + commands + [[:exec]])
     end
 
+    def pipelined(&block)
+      commands = pipeline_commands(&block)
+      slot = get_slot_from_commands(commands)
+
+      refresh_slots
+      call_with_redirection(slot, commands)
+    end
+
     def call(*command, &block)
       slot = get_slot_from_commands([command])
 
