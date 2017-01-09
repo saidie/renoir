@@ -54,10 +54,7 @@ module Renoir
     end
 
     def call(*command, &block)
-      keys = @adapter_class.get_keys_from_command(command)
-      slots = keys.map { |key| key_slot(key) }.uniq
-      fail "No way to dispatch this command to Redis Cluster." if slots.size != 1
-      slot = slots.first
+      slot = get_slot_from_commands([command])
 
       refresh_slots
       call_with_redirection(slot, [command], &block)[0]
@@ -94,6 +91,13 @@ module Renoir
         end
       end
       CRC16.crc16(key) % REDIS_CLUSTER_HASH_SLOTS
+    end
+
+    def get_slot_from_commands(commands)
+      keys = commands.flat_map { |command| @adapter_class.get_keys_from_command(command) }.uniq
+      slots = keys.map { |key| key_slot(key) }.uniq
+      fail "No way to dispatch this command to Redis Cluster." if slots.size != 1
+      slots.first
     end
 
     def call_with_redirection(slot, commands, &block)
