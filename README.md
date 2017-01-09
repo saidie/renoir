@@ -51,6 +51,32 @@ rc = Renoir::Client.new(
 )
 ```
 
+### Pipelining
+
+Command pipelining is supported although "future" variable is not available at this point.
+
+```ruby
+rc.pipeliend do |pipeline|
+  pipeline.set('hoge{1}', 123)
+  pipeline.get('hoge{1}')
+  pipeline.get('fuga{1}')
+end
+# => ["OK", "123", nil]
+```
+
+If pipelined commands use different slot of key, it fails without dispatching command.
+
+You can also execute commands atomically with `#multi`:
+
+```ruby
+rc.multi do |pipeline|
+  pipeline.set('hoge{1}', 123)
+  pipeline.get('hoge{1}')
+  pipeline.get('fuga{1}')
+end
+# => ["OK", "123", nil]
+```
+
 ### Dispatch command to nodes directly
 
 Renoir dispatches a command only if a slot is determined by the command. This also includes no-keys commands like `KEYS`, `BGSAVE` and so on.
