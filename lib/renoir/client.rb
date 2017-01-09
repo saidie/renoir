@@ -50,7 +50,7 @@ module Renoir
     end
 
     def eval(*args, &block)
-      call(eval, *args, &block)
+      call(:eval, *args, &block)
     end
 
     def call(*command, &block)
