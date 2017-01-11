@@ -3,6 +3,7 @@ require "renoir/connection_adapters/base"
 
 module Renoir
   module ConnectionAdapters
+    # Connection adapter for {https://rubygems.org/gems/redis}.
     class Redis < Base
       class << self
         def get_keys_from_command(command)

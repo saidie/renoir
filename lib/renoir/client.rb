@@ -19,6 +19,20 @@ module Renoir
       connection_adapter: :redis,
     }.freeze
 
+    # @option options [Array<String, Array<String, Fixnum>, Hash{String => Fixnum}>] :cluster_nodes
+    #   Array of hostnames and ports of cluster nodes. At least one node must be specified.
+    #   An element could be one of: `String` (`"127.0.0.1:6379"`), `Array` (`["127.0.0.1", 6379]`) or
+    #   `Hash` (`{ host: "127.0.0.1", port: 6379 }`).
+    #   Defaults to `[["127.0.0.1", 6379]]`.
+    # @option options [Fixnum] :max_redirection Max number of MOVED/ASK redirections. Defaults to `10`.
+    # @option options [Fixnum] :max_connection_error
+    #   Max number of reconnections for connection errors. Defaults to `5`.
+    # @option options [Float] :connect_retry_random_factor A factor of reconnection interval. Defaults to `0.1`.
+    # @option options [Float] :connect_retry_interval
+    #   A base interval (seconds) of reconnection. Defaults to `0.001`, i.e., 1 ms.
+    # @option options [String, Symbol] :connection_adapter
+    #   Adapter name of a connection used by client. Defaults to `:redis`.
+    # @option options [Logger] :logger A logger. Defaults to `nil`.
     def initialize(options)
       @connections = {}
       @cluster_info = ClusterInfo.new
@@ -50,10 +64,22 @@ module Renoir
       @refresh_slots_mutex = Mutex.new
     end
 
+    # Call EVAL command.
+    #
+    # @param [Array] args arguments of EVAL passed to a connection backend
+    # @yield [Object] a connection backend may yield
+    # @raise [Renoir::RedirectionError] when too many redirections
+    # @return the value returned by a connection backend
     def eval(*args, &block)
       call(:eval, *args, &block)
     end
 
+    # Pipeline commands and call them with MULTI/EXEC.
+    #
+    # @yield [Renoir::Pipeline] A command pipeliner which has almost compatible interfaces with {Renoir::Client}.
+    # @return the value returned by a connection backend
+    # @raise [Renoir::RedirectionError] when too many redirections
+    # @note Return value of {Renoir::Pipeline} methods is useless since "future variable" is not yet supported.
     def multi(&block)
       commands = pipeline_commands(&block)
       slot = get_slot_from_commands(commands)
@@ -62,6 +88,12 @@ module Renoir
       call_with_redirection(slot, [[:multi]] + commands + [[:exec]])
     end
 
+    # Pipeline commands and call them.
+    #
+    # @yield [Renoir::Pipeline] A command pipeliner which has almost compatible interfaces with {Renoir::Client}.
+    # @return the value returned by a connection backend
+    # @raise [Renoir::RedirectionError] when too many redirections
+    # @note Return value of {Renoir::Pipeline} methods is useless since "future variable" is not yet supported.
     def pipelined(&block)
       commands = pipeline_commands(&block)
       slot = get_slot_from_commands(commands)
@@ -70,6 +102,12 @@ module Renoir
       call_with_redirection(slot, commands)
     end
 
+    # Call a Redis command.
+    #
+    # @param [Array] command a Redis command passed to a connection backend
+    # @yield [Object] a connection backend may yield
+    # @return the value returned by a connection backend
+    # @raise [Renoir::RedirectionError] when too many redirections
     def call(*command, &block)
       slot = get_slot_from_commands([command])
 
@@ -77,12 +115,17 @@ module Renoir
       call_with_redirection(slot, [command], &block)[0]
     end
 
+    # Close all holding connections.
     def close
       while entry = @connections.shift
         entry[1].close
       end
     end
 
+    # Enumerate connections of cluster nodes.
+    #
+    # @yield [Object] an connection instance of connection backend
+    # @return [Enumerable]
     def each_node
       return enum_for(:each_node) unless block_given?
 
@@ -93,6 +136,7 @@ module Renoir
       end
     end
 
+    # Delegated to {#call}.
     def method_missing(command, *args, &block)
       call(command, *args, &block)
     end

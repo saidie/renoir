@@ -1,5 +1,6 @@
 module Renoir
   module ConnectionAdapters
+    # Reply for {Renoir::Client}.
     module Reply
       class Base
         attr_reader :cause
