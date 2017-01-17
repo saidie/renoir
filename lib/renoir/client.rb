@@ -129,6 +129,7 @@ module Renoir
     def each_node
       return enum_for(:each_node) unless block_given?
 
+      refresh_slots
       @cluster_info.nodes.each do |node|
         fetch_connection(node).with_raw_connection do |conn|
           yield conn
