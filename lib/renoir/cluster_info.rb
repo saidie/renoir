@@ -1,4 +1,5 @@
 module Renoir
+  # Store cluster information.
   class ClusterInfo
     class << self
       def node_name(host, port)
