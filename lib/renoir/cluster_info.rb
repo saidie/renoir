@@ -15,9 +15,9 @@ module Renoir
     def load_slots(slots)
       slots.each do |s, e, master, *slaves|
         ip, port, = master
-        name = add_node(ip, port)
+        node = add_node(ip, port)
         (s..e).each do |slot|
-          @slots[slot] = name
+          @slots[slot] = node[:name]
         end
       end
     end
